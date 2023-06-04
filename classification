@@ -1,0 +1,59 @@
+
+%creat data store and give it folder name (the folder has 11 iamges)
+ds = imageDatastore("testimages");
+
+%view matrix contains info about the folder
+readall(ds)
+  
+  % img=readall(ds);
+  % imshow(img{3})
+  
+%to count num of files 
+nFiles = numel(ds.Files);
+
+% preallocates the logical array isReceipt
+isReceipt = false(1,nFiles);
+
+
+%this loop for check all imges in the folder started from 1 to nFailes 
+for k = 1:nFiles
+    I = readimage(ds,k);
+    isReceipt(k) = classifyImage(I);
+end
+
+%to store classifed images we need a file
+receiptFiles = ds.Files(isReceipt);
+
+%for display
+montage(receiptFiles)
+title("Receipt")
+
+
+
+function isReceipt = classifyImage(I)
+    
+    % Processing
+    gs = im2gray(I);
+    gs = imadjust(gs);
+    
+    H = fspecial("average",3);
+    gssmooth = imfilter(gs,H,"replicate");
+    
+    SE = strel("disk",8);  
+    Ibg = imclose(gssmooth, SE);
+    Ibgsub =  Ibg - gssmooth;
+    Ibw = ~imbinarize(Ibgsub);
+    
+    SE = strel("rectangle",[3 25]);
+    stripes = imopen(Ibw, SE);
+    
+    signal = sum(stripes,2);  
+
+    % Classification
+    minIndices = islocalmin(signal,"MinProminence",70,"ProminenceWindow",25); 
+    nMin = nnz(minIndices);
+    isReceipt = nMin >= 9;
+    
+end
+
+
